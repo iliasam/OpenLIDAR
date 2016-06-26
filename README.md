@@ -1,5 +1,5 @@
 # OpenLIDAR
-Simple enough scanning laser rangefinder. Based on triangulation principle.
+Simple enough scanning laser rangefinder. Based on triangulation method.
 ![Alt text](wiki_images/main1.jpg?raw=true "Image")
 
 Used STM32F303 + ELIS-1024 sensor.
