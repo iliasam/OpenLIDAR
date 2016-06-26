@@ -1,9 +1,9 @@
-# DIY_laser_lidar
-Simple enough DIY scanning laser rangefinder.
+# OpenLIDAR
+Simple enough scanning laser rangefinder. Based on triangulation principle.
+![Alt text](OpenLIDAR/wiki_images/mirror_image.png?raw=true "Image")
 Used STM32F303 + ELIS-1024 sensor.
 
 https://geektimes.ru/post/275442/
 
-
-ros_roomba_lidar - ROS driver for lidar, based on github.com/rohbotics/xv_11_laser_driver
+Read wiki for more information.
 
