@@ -4,7 +4,7 @@ Simple enough scanning laser rangefinder. Based on triangulation method.
 
 Used STM32F303 + ELIS-1024 sensor.
 
-https://geektimes.ru/post/275442/
+Article in Russian about it: https://geektimes.ru/post/275442/
 
 Read wiki for more information.
 
