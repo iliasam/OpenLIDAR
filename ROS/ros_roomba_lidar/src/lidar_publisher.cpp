@@ -1,7 +1,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2016, Eric Perko, Chad Rockey, iliasam
+ *  Copyright (c) 2011, Eric Perko, Chad Rockey
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -31,13 +31,12 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
+ //Modifided by ILIASAM 2018
 
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
 #include <boost/asio.hpp>
-#include <xv11_laser.h>
-
-//NOTE by iliasam - "xv11" and "neato_laser" leaved for compatibility with another ROS nodes 
+#include <lidar_parser.h>
 
 int main(int argc, char **argv)
 {
@@ -50,15 +49,27 @@ int main(int argc, char **argv)
   std::string frame_id;
   int firmware_number;
 
+  double loc_a_coef;
+  double loc_b_coef;
+  double loc_base_coef;
+  
+
   priv_nh.param("port", port, std::string("/dev/ttyUSB0"));
   priv_nh.param("baud_rate", baud_rate, 57600);
   priv_nh.param("frame_id", frame_id, std::string("/neato_laser"));
   priv_nh.param("firmware_version", firmware_number, 1);
 
+  priv_nh.param("a_coef", loc_a_coef, 0.00005078);
+  priv_nh.param("b_coef", loc_b_coef, 0.454);
+  priv_nh.param("base_coef", loc_base_coef, -0.055);
+
   boost::asio::io_service io;
 
   try {
-    xv_11_laser_driver::XV11Laser laser(port, baud_rate, firmware_number, io);
+    tr_lidar_driver::LidarParser laser(port, baud_rate, firmware_number, io);
+    laser.a_coef = loc_a_coef;
+    laser.b_coef = loc_b_coef;
+    laser.base_coef = loc_base_coef;
     ros::Publisher laser_pub = n.advertise<sensor_msgs::LaserScan>("scan", 1000);
     ROS_INFO("ILIASAM laser started");
 
