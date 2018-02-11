@@ -34,11 +34,21 @@
 //Modifided by ILIASAM 2018
 
 #include <lidar_parser.h>
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <ros/ros.h>
 
 //total packet length (2+1+360)*2 bytes - 728
 //2 words - header + 1 word status + 1 word - speed
+
+//0 bit - overspeed flag
+#define STATUS_WORD_OVERSPEED_MASK     (1<<0)
+
+//15 bit - shows that this is lidar 4
+#define STATUS_WORD_LIDAR4_MASK        (1<<15)
+
+//Degrees
+#define LIDAR3_ANG_OFFSET        		14
 
 namespace tr_lidar_driver
 {
@@ -69,6 +79,10 @@ namespace tr_lidar_driver
     uint8_t byte1;
     
     uint16_t scan_time = 0;
+	uint16_t status_word = 0;
+	
+	double max_distance = 5.0;//meters
+	int16_t static_angular_offset = LIDAR3_ANG_OFFSET;//deg
     
 	
     boost::array<uint8_t, 724> raw_bytes;
@@ -100,7 +114,20 @@ namespace tr_lidar_driver
 	    boost::asio::read(serial_,boost::asio::buffer(&raw_bytes2,4));
 	    boost::asio::read(serial_,boost::asio::buffer(&raw_bytes,720));
 	    
+		status_word = (uint16_t)raw_bytes2[0] + ((uint16_t)raw_bytes2[1] << 8);
 	    scan_time = (uint16_t)raw_bytes2[2] + ((uint16_t)raw_bytes2[3] << 8);
+		
+		if ((status_word & STATUS_WORD_LIDAR4_MASK) != 0)
+		{
+			//Lidar 4 mode
+			max_distance = 4.0;
+			static_angular_offset = 0;
+		}
+		else
+		{
+			max_distance = 5.0;
+			static_angular_offset = LIDAR3_ANG_OFFSET;
+		}
 	
 	    scan->angle_min = 0.0;
 	    scan->angle_max = 2.0*M_PI;
@@ -109,7 +136,7 @@ namespace tr_lidar_driver
 	    scan->time_increment = scan_time*0.001/360.0;
 	    scan->scan_time = scan_time*0.001;//seconds
 	    scan->range_min = 0.16;
-	    scan->range_max = 5.0;
+	    scan->range_max = max_distance;
 	    scan->ranges.reserve(360);
 	    scan->intensities.reserve(360);
 	    bad_data_flag = 0;
@@ -128,30 +155,30 @@ namespace tr_lidar_driver
 	      //pix = pix & 16383;
 	      
 	      //dist = (-0.055) / (tan(((double)pix)*0.00004993 - 0.445)); //lidar3  - OpenLidar
-              dist = base_coef / (tan(((double)pix)*a_coef - b_coef));
-	      if ((dist > 5.0) || (dist < 0.16))
-	      {
-	      	dist = 0.0;
-	      	offset2 = offset1;
-	      }
-	      else
-	      {
-			//ang_corr = (uint16_t)(atan(0.042/dist) * 180.0 / 3.14159 + (double)offset1 * 3.0 / 360.0);
-	        ang_corr = (uint16_t)(atan(0.03/dist) * 180.0 / 3.14159);
-			offset2 = (int16_t)offset1 + (int16_t)ang_corr + (int16_t)12;
-			if (offset2 > 359) {offset2 = offset2 - 360;}
-			if (offset2 < 0) {offset2 = 360 + offset2;}
-	      }
-	      
-	      dist_scan[(uint16_t)offset2] = dist;
-	      
+          dist = base_coef / (tan(((double)pix)*a_coef - b_coef));
+		  
+		  
+		  if ((dist > 0.16) && (dist < max_distance))
+		  {
+			double h_base = fabs(base_coef) / 2;
+	        ang_corr = (uint16_t)(atan(h_base/dist) * 180.0 / M_PI);//Angular correction
+			offset2 = (int16_t)offset1 + (int16_t)ang_corr + static_angular_offset;
+			if (offset2 > 359) 
+				offset2 = offset2 - 360;
+			if (offset2 < 0) 
+				offset2 = 360 + offset2;
+			dist_scan[(uint16_t)offset2] = dist;  
+		  }
+		  else
+		  {
+			//dist = 0.0;
+	      	//offset2 = offset1;
+		  }
 	    }
-	    
 	    
 	    //dist_scan[359] = 0;
 	    dist_scan[0] = 0;
 	    dist_scan[1] = 0;
-	    
 	    
 	    if (bad_data_flag == 0)
 	    {
